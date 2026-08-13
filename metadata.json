@@ -1,0 +1,6 @@
+{
+  "name": "Matcha Gerobak ERP",
+  "description": "Aplikasi ERP ringan UMKM Matcha Gerobak untuk Management Product, Setting Harga Jual, BOM Setup, Kalkulasi HPP Teoritis dan Gross Margin.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}

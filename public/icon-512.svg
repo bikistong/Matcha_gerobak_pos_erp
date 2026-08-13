@@ -1,0 +1,14 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="512" height="512">
+  <rect width="512" height="512" rx="100" fill="#4C6444"/>
+  <!-- Cup Base -->
+  <path d="M150 180 L170 360 C173 390, 200 410, 235 410 L277 410 C312 410, 339 390, 342 360 L362 180 Z" fill="#ffffff" opacity="0.95"/>
+  <!-- Cup Handle -->
+  <path d="M362 210 C400 210, 420 235, 415 270 C410 305, 380 325, 358 320" fill="none" stroke="#ffffff" stroke-width="20" stroke-linecap="round"/>
+  <!-- Matcha Liquid Surface -->
+  <ellipse cx="256" cy="180" rx="106" ry="32" fill="#86A760"/>
+  <!-- Tea Leaf Accent -->
+  <path d="M256 100 C210 100, 190 140, 256 160 C322 140, 302 100, 256 100 Z" fill="#A3C978"/>
+  <path d="M256 100 L256 155" stroke="#4C6444" stroke-width="5" stroke-linecap="round"/>
+  <!-- MG Text -->
+  <text x="256" y="295" font-family="system-ui, -apple-system, sans-serif" font-weight="800" font-size="76" fill="#4C6444" text-anchor="middle">MG</text>
+</svg>
