@@ -1,11 +1,17 @@
 import React, { useState } from 'react';
 import { SUPABASE_SQL_SCRIPT } from '../data/supabaseSchema';
 import { BUSINESS_RULES_LIST } from '../data/seedData';
-import { Database, Copy, Check, Terminal, ShieldCheck, FileCode, Play } from 'lucide-react';
+import { Database, Copy, Check, Terminal, ShieldCheck, FileCode, Play, Wifi, WifiOff, RefreshCw, KeyRound } from 'lucide-react';
+import { SupabaseService } from '../lib/supabaseService';
+import { SupabaseConnectionCheck } from './SupabaseConnectionCheck';
 
 export const SqlSchemaViewer: React.FC = () => {
   const [copied, setCopied] = useState(false);
-  const [activeSubTab, setActiveSubTab] = useState<'script' | 'rules' | 'terminal'>('script');
+  const [activeSubTab, setActiveSubTab] = useState<'script' | 'rules' | 'terminal' | 'connection'>('connection');
+  const [connectionState, setConnectionState] = useState<{ testing: boolean; result: { success: boolean; message: string } | null }>({
+    testing: false,
+    result: null
+  });
   const [terminalOutput, setTerminalOutput] = useState<string>(
     '-- Supabase PostgreSQL 15 SQL Simulator\n-- Run "SELECT * FROM view_product_costing_summary;" or "SELECT fn_calculate_product_hpp(...);"\n'
   );
@@ -15,6 +21,12 @@ export const SqlSchemaViewer: React.FC = () => {
     navigator.clipboard.writeText(SUPABASE_SQL_SCRIPT);
     setCopied(true);
     setTimeout(() => setCopied(false), 2500);
+  };
+
+  const handleTestConnection = async () => {
+    setConnectionState({ testing: true, result: null });
+    const res = await SupabaseService.testConnection();
+    setConnectionState({ testing: false, result: res });
   };
 
   const handleRunSimulatorQuery = () => {
@@ -39,15 +51,12 @@ export const SqlSchemaViewer: React.FC = () => {
         <div>
           <div className="flex items-center space-x-2 text-emerald-400 font-mono text-xs font-bold uppercase mb-1">
             <Database className="w-4 h-4" />
-            <span>Supabase PostgreSQL Schema & Constraints Architect</span>
+            <span>Supabase PostgreSQL Schema & Integration Engine</span>
           </div>
-          <h2 className="text-lg font-extrabold">Skrip SQL Supabase (BP-01 Management Product)</h2>
+          <h2 className="text-lg font-extrabold">Integrasi Database Supabase Real-time</h2>
           <p className="text-xs text-slate-400 mt-1 max-w-2xl leading-relaxed">
-            Terdiri dari 5 tabel relational (<code className="text-emerald-300 font-mono">products</code>,{' '}
-            <code className="text-emerald-300 font-mono">product_prices</code>,{' '}
-            <code className="text-emerald-300 font-mono">ingredients</code>,{' '}
-            <code className="text-emerald-300 font-mono">boms</code>,{' '}
-            <code className="text-emerald-300 font-mono">bom_details</code>), Triggers, Functions, RLS Policies, dan Aturan Bisnis BR-PRD-001 s.d BR-PRD-012.
+            Terdiri dari SDK <code className="text-emerald-300 font-mono">@supabase/supabase-js</code>, tabel-tabel relational (<code className="text-emerald-300 font-mono">products</code>,{' '}
+            <code className="text-emerald-300 font-mono">ingredients</code>, <code className="text-emerald-300 font-mono">sales_transactions</code>, <code className="text-emerald-300 font-mono">daily_operations</code>), Triggers, Functions, dan RLS Policies.
           </p>
         </div>
 
@@ -56,12 +65,24 @@ export const SqlSchemaViewer: React.FC = () => {
           className="bg-[#4C6444] hover:bg-[#3d5036] text-white font-bold text-xs px-4 py-2.5 rounded-lg flex items-center space-x-2 transition-colors shadow-xs"
         >
           {copied ? <Check className="w-4 h-4 text-white" /> : <Copy className="w-4 h-4" />}
-          <span>{copied ? 'Tercopy ke Clipboard!' : 'Copy SQL Script'}</span>
+          <span>{copied ? 'Tercopy ke Clipboard!' : 'Copy SQL Script DDL'}</span>
         </button>
       </div>
 
       {/* Sub-navigation */}
-      <div className="flex space-x-2 border-b border-slate-200 pb-2">
+      <div className="flex space-x-2 border-b border-slate-200 pb-2 overflow-x-auto scrollbar-none">
+        <button
+          onClick={() => setActiveSubTab('connection')}
+          className={`px-4 py-2 text-xs font-bold rounded-lg transition-colors flex items-center space-x-2 ${
+            activeSubTab === 'connection'
+              ? 'bg-emerald-700 text-white shadow-xs'
+              : 'bg-white text-slate-600 border border-slate-200 hover:bg-slate-100'
+          }`}
+        >
+          <Wifi className="w-4 h-4" />
+          <span>Status Live Supabase</span>
+        </button>
+
         <button
           onClick={() => setActiveSubTab('script')}
           className={`px-4 py-2 text-xs font-bold rounded-lg transition-colors flex items-center space-x-2 ${
@@ -98,6 +119,55 @@ export const SqlSchemaViewer: React.FC = () => {
           <span>SQL Query Simulator</span>
         </button>
       </div>
+
+      {/* SUB-TAB 0: LIVE SUPABASE CONNECTION STATUS */}
+      {activeSubTab === 'connection' && (
+        <div className="space-y-6">
+          <SupabaseConnectionCheck />
+
+          <div className="bg-white border border-slate-200 rounded-2xl p-6 shadow-xs space-y-6">
+            {/* Instructions Step-by-Step */}
+            <div className="space-y-4">
+              <h4 className="font-bold text-slate-900 text-xs uppercase tracking-wider text-slate-400">Langkah Integrasi Supabase:</h4>
+
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <div className="bg-slate-50 border border-slate-200 p-4 rounded-xl space-y-2">
+                  <div className="w-7 h-7 rounded-lg bg-[#4C6444] text-white flex items-center justify-center font-bold text-xs">1</div>
+                  <h5 className="font-bold text-slate-900 text-sm">Salin SQL DDL Schema</h5>
+                  <p className="text-xs text-slate-600">Klik tombol <b>"Copy SQL Script DDL"</b> di atas, lalu buka SQL Editor di Dashboard Supabase Anda dan jalankan (*Run*).</p>
+                  <div className="text-[11px] bg-amber-50 text-amber-900 p-2 rounded-lg border border-amber-200 mt-1 font-medium">
+                    ⚠️ <b>Penting:</b> Jangan highlight/blok teks tertentu. Pastikan tombol di Supabase bertuliskan <b>"Run"</b> (bukan <i>"Run selected"</i>).
+                  </div>
+                </div>
+
+                <div className="bg-slate-50 border border-slate-200 p-4 rounded-xl space-y-2">
+                  <div className="w-7 h-7 rounded-lg bg-[#4C6444] text-white flex items-center justify-center font-bold text-xs">2</div>
+                  <h5 className="font-bold text-slate-900 text-sm">Ambil API Credentials</h5>
+                  <p className="text-xs text-slate-600">Buka menu <b>Project Settings &gt; API</b> di Supabase, lalu dapatkan <b>Project URL</b> dan <b>anon public key</b>.</p>
+                </div>
+
+                <div className="bg-slate-50 border border-slate-200 p-4 rounded-xl space-y-2">
+                  <div className="w-7 h-7 rounded-lg bg-[#4C6444] text-white flex items-center justify-center font-bold text-xs">3</div>
+                  <h5 className="font-bold text-slate-900 text-sm">Isi Environment Variables</h5>
+                  <p className="text-xs text-slate-600">Tambahkan variabel berikut ke <code className="bg-slate-200 px-1 py-0.5 rounded font-mono text-[11px]">.env</code> / Settings AI Studio:</p>
+                </div>
+              </div>
+
+              <div className="bg-slate-900 text-emerald-400 font-mono text-xs p-4 rounded-xl border border-slate-800 space-y-2">
+                <div className="flex items-center space-x-2 text-slate-400 font-sans text-xs border-b border-slate-800 pb-2">
+                  <KeyRound className="w-4 h-4 text-emerald-400" />
+                  <span>Format Variabel Lingkungan Supabase (.env)</span>
+                </div>
+                <pre className="text-xs overflow-x-auto leading-relaxed select-all">
+{`VITE_SUPABASE_URL=https://your-project-id.supabase.co
+VITE_SUPABASE_ANON_KEY=your-anon-public-key-here`}
+                </pre>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
 
       {/* SUB-TAB 1: COMPLETE SQL DDL CODE */}
       {activeSubTab === 'script' && (

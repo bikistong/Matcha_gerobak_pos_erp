@@ -8,25 +8,41 @@ export const SUPABASE_SQL_SCRIPT = `-- =========================================
 CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
 
 -- ----------------------------------------------------------------------------
--- 1. DROP EXISTING TABLES & FUNCTIONS (FOR CLEAN RE-INIT IF NEEDED)
+-- 1. DROP EXISTING VIEWS, TABLES & FUNCTIONS (FOR CLEAN RE-INIT IF NEEDED)
 -- ----------------------------------------------------------------------------
-DROP TRIGGER IF EXISTS trg_products_updated_at ON products;
-DROP TRIGGER IF EXISTS trg_ingredients_updated_at ON ingredients;
-DROP TRIGGER IF EXISTS trg_boms_updated_at ON boms;
-DROP TRIGGER IF EXISTS trg_verify_active_ingredient ON bom_details;
-DROP TRIGGER IF EXISTS trg_validate_product_activation ON products;
+DROP VIEW IF EXISTS v_cash_reconciliation CASCADE;
+DROP VIEW IF EXISTS v_daily_pnl CASCADE;
+DROP VIEW IF EXISTS v_inventory_valuation CASCADE;
+DROP VIEW IF EXISTS view_product_costing_summary CASCADE;
+
+DROP TABLE IF EXISTS sales_details CASCADE;
+DROP TABLE IF EXISTS sales CASCADE;
+DROP TABLE IF EXISTS expenses CASCADE;
+DROP TABLE IF EXISTS preparation_details CASCADE;
+DROP TABLE IF EXISTS preparation_batches CASCADE;
+DROP TABLE IF EXISTS goods_receipt_detail CASCADE;
+DROP TABLE IF EXISTS goods_receipt CASCADE;
+DROP TABLE IF EXISTS purchase_details CASCADE;
+DROP TABLE IF EXISTS purchases CASCADE;
+DROP TABLE IF EXISTS stock_movements CASCADE;
+DROP TABLE IF EXISTS stock_opname CASCADE;
+DROP TABLE IF EXISTS stock_issues CASCADE;
+DROP TABLE IF EXISTS opening_cash CASCADE;
+DROP TABLE IF EXISTS daily_operations CASCADE;
+DROP TABLE IF EXISTS bom_details CASCADE;
+DROP TABLE IF EXISTS boms CASCADE;
+DROP TABLE IF EXISTS product_prices CASCADE;
+DROP TABLE IF EXISTS products CASCADE;
+DROP TABLE IF EXISTS ingredients CASCADE;
 
 DROP FUNCTION IF EXISTS update_timestamp CASCADE;
 DROP FUNCTION IF EXISTS fn_verify_active_ingredient CASCADE;
 DROP FUNCTION IF EXISTS fn_validate_product_activation CASCADE;
 DROP FUNCTION IF EXISTS fn_calculate_product_hpp CASCADE;
 DROP FUNCTION IF EXISTS fn_get_active_selling_price CASCADE;
-
-DROP TABLE IF EXISTS bom_details CASCADE;
-DROP TABLE IF EXISTS boms CASCADE;
-DROP TABLE IF EXISTS product_prices CASCADE;
-DROP TABLE IF EXISTS products CASCADE;
-DROP TABLE IF EXISTS ingredients CASCADE;
+DROP FUNCTION IF EXISTS fn_update_weighted_average_cost CASCADE;
+DROP FUNCTION IF EXISTS fn_process_pos_sale CASCADE;
+DROP FUNCTION IF EXISTS fn_execute_daily_closing CASCADE;
 
 -- ----------------------------------------------------------------------------
 -- 2. CREATE MASTER TABLES WITH BR CONSTRAINTS
@@ -302,6 +318,9 @@ CREATE TABLE daily_operations (
     closed_at TIMESTAMPTZ,
     opened_by VARCHAR(100),
     closed_by VARCHAR(100),
+    actual_cash NUMERIC(12, 2) DEFAULT 0.00,
+    cash_variance NUMERIC(12, 2) DEFAULT 0.00,
+    closing_notes TEXT,
     notes TEXT,
     created_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP
 );
@@ -465,8 +484,13 @@ CREATE TRIGGER trg_update_weighted_average_cost
     FOR EACH ROW EXECUTE FUNCTION fn_update_weighted_average_cost();
 
 -- ----------------------------------------------------------------------------
--- 8. SUPABASE ROW LEVEL SECURITY (RLS) POLICIES FOR PHASE 2
+-- 8. SUPABASE ROW LEVEL SECURITY (RLS) POLICIES FOR ALL TABLES
 -- ----------------------------------------------------------------------------
+ALTER TABLE products ENABLE ROW LEVEL SECURITY;
+ALTER TABLE product_prices ENABLE ROW LEVEL SECURITY;
+ALTER TABLE ingredients ENABLE ROW LEVEL SECURITY;
+ALTER TABLE boms ENABLE ROW LEVEL SECURITY;
+ALTER TABLE bom_details ENABLE ROW LEVEL SECURITY;
 ALTER TABLE daily_operations ENABLE ROW LEVEL SECURITY;
 ALTER TABLE opening_cash ENABLE ROW LEVEL SECURITY;
 ALTER TABLE stock_issues ENABLE ROW LEVEL SECURITY;
@@ -477,15 +501,20 @@ ALTER TABLE goods_receipt_detail ENABLE ROW LEVEL SECURITY;
 ALTER TABLE stock_movements ENABLE ROW LEVEL SECURITY;
 ALTER TABLE stock_opname ENABLE ROW LEVEL SECURITY;
 
-CREATE POLICY "Allow public select on daily_operations" ON daily_operations FOR SELECT USING (true);
-CREATE POLICY "Allow public select on opening_cash" ON opening_cash FOR SELECT USING (true);
-CREATE POLICY "Allow public select on stock_issues" ON stock_issues FOR SELECT USING (true);
-CREATE POLICY "Allow public select on purchases" ON purchases FOR SELECT USING (true);
-CREATE POLICY "Allow public select on purchase_details" ON purchase_details FOR SELECT USING (true);
-CREATE POLICY "Allow public select on goods_receipt" ON goods_receipt FOR SELECT USING (true);
-CREATE POLICY "Allow public select on goods_receipt_detail" ON goods_receipt_detail FOR SELECT USING (true);
-CREATE POLICY "Allow public select on stock_movements" ON stock_movements FOR SELECT USING (true);
-CREATE POLICY "Allow public select on stock_opname" ON stock_opname FOR SELECT USING (true);
+CREATE POLICY "Allow public all on products" ON products FOR ALL USING (true) WITH CHECK (true);
+CREATE POLICY "Allow public all on product_prices" ON product_prices FOR ALL USING (true) WITH CHECK (true);
+CREATE POLICY "Allow public all on ingredients" ON ingredients FOR ALL USING (true) WITH CHECK (true);
+CREATE POLICY "Allow public all on boms" ON boms FOR ALL USING (true) WITH CHECK (true);
+CREATE POLICY "Allow public all on bom_details" ON bom_details FOR ALL USING (true) WITH CHECK (true);
+CREATE POLICY "Allow public all on daily_operations" ON daily_operations FOR ALL USING (true) WITH CHECK (true);
+CREATE POLICY "Allow public all on opening_cash" ON opening_cash FOR ALL USING (true) WITH CHECK (true);
+CREATE POLICY "Allow public all on stock_issues" ON stock_issues FOR ALL USING (true) WITH CHECK (true);
+CREATE POLICY "Allow public all on purchases" ON purchases FOR ALL USING (true) WITH CHECK (true);
+CREATE POLICY "Allow public all on purchase_details" ON purchase_details FOR ALL USING (true) WITH CHECK (true);
+CREATE POLICY "Allow public all on goods_receipt" ON goods_receipt FOR ALL USING (true) WITH CHECK (true);
+CREATE POLICY "Allow public all on goods_receipt_detail" ON goods_receipt_detail FOR ALL USING (true) WITH CHECK (true);
+CREATE POLICY "Allow public all on stock_movements" ON stock_movements FOR ALL USING (true) WITH CHECK (true);
+CREATE POLICY "Allow public all on stock_opname" ON stock_opname FOR ALL USING (true) WITH CHECK (true);
 
 -- ----------------------------------------------------------------------------
 -- 9. PHASE 3: CORE TRANSACTIONS (SALES POS, EXPENSES & PREPARATION BATCHES)
@@ -658,11 +687,11 @@ ALTER TABLE expenses ENABLE ROW LEVEL SECURITY;
 ALTER TABLE preparation_batches ENABLE ROW LEVEL SECURITY;
 ALTER TABLE preparation_details ENABLE ROW LEVEL SECURITY;
 
-CREATE POLICY "Allow public select on sales" ON sales FOR SELECT USING (true);
-CREATE POLICY "Allow public select on sales_details" ON sales_details FOR SELECT USING (true);
-CREATE POLICY "Allow public select on expenses" ON expenses FOR SELECT USING (true);
-CREATE POLICY "Allow public select on preparation_batches" ON preparation_batches FOR SELECT USING (true);
-CREATE POLICY "Allow public select on preparation_details" ON preparation_details FOR SELECT USING (true);
+CREATE POLICY "Allow public all on sales" ON sales FOR ALL USING (true) WITH CHECK (true);
+CREATE POLICY "Allow public all on sales_details" ON sales_details FOR ALL USING (true) WITH CHECK (true);
+CREATE POLICY "Allow public all on expenses" ON expenses FOR ALL USING (true) WITH CHECK (true);
+CREATE POLICY "Allow public all on preparation_batches" ON preparation_batches FOR ALL USING (true) WITH CHECK (true);
+CREATE POLICY "Allow public all on preparation_details" ON preparation_details FOR ALL USING (true) WITH CHECK (true);
 
 -- ----------------------------------------------------------------------------
 -- 12. PHASE 4 VIEWS & DAILY CLOSING RPC (BP-09, BP-10, BP-11, BP-12)
@@ -681,7 +710,7 @@ SELECT
     dop.actual_cash,
     (COALESCE(dop.actual_cash, 0) - (COALESCE(opc.amount, 0) + COALESCE(sales_cash.total_cash_sales, 0) - COALESCE(expenses_cash.total_cash_expenses, 0))) AS cash_variance
 FROM daily_operations dop
-LEFT JOIN opening_cashes opc ON opc.daily_operation_id = dop.id
+LEFT JOIN opening_cash opc ON opc.daily_operation_id = dop.id
 LEFT JOIN (
     SELECT daily_operation_id, SUM(total_amount) AS total_cash_sales
     FROM sales
